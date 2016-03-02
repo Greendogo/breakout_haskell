@@ -1,0 +1,18 @@
+To-Do-List:
+    -Make hitting the ball with different parts of the paddle make it go in different directions - research breakout games and trig functions
+    -Smooth out movement of paddle, it's too granular and stuttery; maybe look at the keypress example - done
+    -Research if breakout games usually give players up and down motion - done -nope
+    -Make the blocks have different colors; maybe figure out a random function to use with colors for everything
+    -Make a background
+    -Winning and losing conditions
+        -Make hitting the bottom take a life - give the player 3 to start with; when they run out of lives, give a game over message; keep track of their score and when they lose post their new high score or their old highscore (give like their ten best or something).
+        -Make destroying all the blocks give the player a message; keep track of their score. After clicking somewhere or waiting so long make the a new game start.
+    -background picture
+    -sounds
+
+Setup:
+    -Install blank canvas if it's not already installed
+    -Put the Main_test.hs file into a folder in the blank-canvas-master\examples\ folder
+    -Open terminal and go to the folder where the hs file is
+    -type ghci Main_test.hs to make it compile, then type "main" to get it to run
+    -open a browser and go to localhost:3000 so see the program 

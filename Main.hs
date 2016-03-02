@@ -14,15 +14,17 @@ type Brick = (Double, Double, Double, Double, Bool, Text, Int)
 
 type Paddle = (Double, Double, Double, Double)
 
-dot :: (Double, Double) -> (Double, Double)-> Double
-dot (x,y) (a, b) = x*a + y*b
+-- gives a dot product
+-- dot :: (Double, Double) -> (Double, Double)-> Double
+-- dot (x,y) (a, b) = x*a + y*b
 
-normal :: (Double, Double) -> (Double, Double)
-normal (x, y) = (x / (sqrt (x^2 + y^2)) , y / (sqrt (x^2 + y^2)))
+-- gives the normal to a surface
+-- normal :: (Double, Double) -> (Double, Double)
+-- normal (x, y) = (x / (sqrt (x^2 + y^2)) , y / (sqrt (x^2 + y^2)))
 
-
-reflection :: (Double, Double) -> (Double, Double) -> (Double, Double)
-reflection d@(x, y) n@(nx, ny) = (x - 2*(x*nx + y*ny)*nx,(-1) * abs (y - 2*(x*nx + y*ny)*ny))
+-- dealing with reflections over a given normal
+-- reflection :: (Double, Double) -> (Double, Double) -> (Double, Double)
+-- reflection d@(x, y) n@(nx, ny) = (x - 2*(x*nx + y*ny)*nx,(-1) * abs (y - 2*(x*nx + y*ny)*ny))
 
 showBall :: Ball -> Canvas ()
 showBall ((x,y),_) = do
@@ -43,7 +45,7 @@ showBrick (xl, xr, yb, yt, True, color, hits) = do
     fill()
 showBrick (_,_,_,_,False,_,_) = do
     fill()
-    
+
 showPaddle :: Paddle -> Canvas ()
 showPaddle (xl, xr, yb, yt) = do
     beginPath()
@@ -81,22 +83,31 @@ hitBrick theBall (_, _, _, _,False,_,_) =
 
 hitAllBricks :: Ball -> [Brick] -> Ball
 hitAllBricks ball [] = ball
-hitAllBricks ball (x:xs) = hitAllBricks (hitBrick ball x) xs    
-    
+hitAllBricks ball (x:xs) = hitAllBricks (hitBrick ball x) xs
+
+-- this version of hitPaddle makes the ball bounce off of the paddle rectangularly.
 hitPaddle :: Ball -> Paddle -> Double -> Ball
 hitPaddle theBall@((x,y), (hVel, vVel)) thePaddle@(xl, xr, yb, yt) speed =
     if ((x + hVel >= xl) && (x + hVel <= xr) && (y + vVel >= yb) && (y + vVel <= yt))
-       then if(hVel >= 0)
-           then ((x,y), r)
-           else ((x,y), r)
-    else theBall
-    where xpos = (x - xr)
-          a = 500 :: Double
-          b = 10 :: Double
-          yy = (b / a)* sqrt (a^2 - xpos^2)
-          n = normal (xpos/a^2, yy/b^2)
-          r = reflection (hVel, vVel) n
-                    
+       then ((x,y), (hVel, -vVel))
+    else theBall -- if not contacting the paddle, the ball just keeps going.
+
+-- This version of hitPaddle attempts to map the surface of an ellipse to the paddle
+-- and bounce the ball off of it accordingly.  Currently slow and broken.
+-- hitPaddle :: Ball -> Paddle -> Double -> Ball
+-- hitPaddle theBall@((x,y), (hVel, vVel)) thePaddle@(xl, xr, yb, yt) speed =
+--     if ((x + hVel >= xl) && (x + hVel <= xr) && (y + vVel >= yb) && (y + vVel <= yt))
+--        then if(hVel >= 0)
+--            then ((x,y), r)
+--            else ((x,y), r)
+--     else theBall
+--     where xpos = (x - xr)
+--           a = 500 :: Double
+--           b = 10 :: Double
+--           yy = (b / a)* sqrt (a^2 - xpos^2)
+--           n = normal (xpos/a^2, yy/b^2)
+--           r = reflection (hVel, vVel) n
+
 hitWall :: (Double, Double) -> Ball -> Ball
 hitWall (width , height) theBall@((x,y), (hVel, vVel)) =
     if ((x + hVel >= width) || (x + hVel <= 0) || (y + vVel >= height) || (y + vVel <= 0))
@@ -108,16 +119,18 @@ hitWall (width , height) theBall@((x,y), (hVel, vVel)) =
                     then ((x,y), (hVel, -vVel))
                     else ((x,y), (hVel, vVel))
                     else ((x,y), (hVel, vVel))
-                    
+
 hitBottom :: (Double, Double) -> Ball -> Bool -> Bool
 hitBottom (width , height) theBall@((x,y), (hVel, vVel)) lose = do
-    if ((y + vVel >= height) && not lose)
-       then True
-       else False
-       
+    if (not lose)
+      then if ((y + vVel >= height))
+           then True
+           else False
+      else True
+
 showLoseScreen :: (Double, Double) -> Ball -> Bool -> Canvas ()
 showLoseScreen (width, height) theBall@((x,y), (hVel, vVel)) lose =
-    if ((y + vVel >= height) && lose)
+    if ((y + vVel >= height) || lose)
      then do
                 clearRect (0,0,width,height)
                 lineWidth 1
@@ -130,7 +143,7 @@ showLoseScreen (width, height) theBall@((x,y), (hVel, vVel)) lose =
             globalAlpha 1
             fillStyle "green"
             rect(10,10,20,20)
-                   
+
 destroyBrick :: Ball -> Brick -> Brick
 destroyBrick ((x,y), (hVel, vVel)) (xl, xr, yb, yt, True, color, hits) =
     if ((x + hVel >= xl) && (x + hVel <= xr) && (y + vVel >= yb) && (y + vVel <= yt))
@@ -150,22 +163,24 @@ createBricks count xSize ySize yRow startCol color hits pattern
 lastX :: Paddle -> Double
 lastX (x,_,_,_) = x
 
-speedUp :: Paddle -> Double -> (Double, Double) -> (Double, Double)
-speedUp (dx,_,_,_) x (hVel,vVel)
-    | ((dx - x)/30 + hVel)^2 + vVel^2 <= topSpeed^2 = ((dx -x)/30 + hVel, vVel)
-    | otherwise = (signum hVel , vVel)
-    where topSpeed = 1.4142135623731 :: Double
+-- used to put a speed boost on the ball under certain curcumstances.  Currently broken and slow.
+-- speedUp :: Paddle -> Double -> (Double, Double) -> (Double, Double)
+-- speedUp (dx,_,_,_) x (hVel,vVel)
+--     | ((dx - x)/30 + hVel)^2 + vVel^2 <= topSpeed^2 = ((dx -x)/30 + hVel, vVel)
+--     | otherwise = (signum hVel , vVel)
+--     where topSpeed = 1.4142135623731 :: Double
 
 go :: DeviceContext -> IO ()
 go context = do
 
      let (w,h) = (width context, height context) :: (Double, Double)
-     print (w,h)
-     
+    -- uncomment to print the size of the canvas.
+    --  print (w,h)
+
      let size = 200 :: Double --the size of the paddle
-     
+
      let loop (ball, bricks, paddle, lastPaddleX, lose) = do
-         
+
              send context $ do
                 clearCanvas
                 showBall ball
@@ -176,16 +191,17 @@ go context = do
                 showLoseScreen (w,h) ball lose
 
                 showPaddle paddle
-
+             threadDelay (1 * 1000)
              es <- flush context
 
-             
+
              let mouseTracker = head ([xx | Just (xx, yy) <- map ePageXY es] ++ [-1])
-             print ball
+            -- uncomment to print the ball location and velocity.
+            --  print ball
              case mouseTracker of
                 -1 -> loop (moveBall $ (hitWall (w, h) $ (hitPaddle (hitAllBricks ball bricks) paddle lastPaddleX)), destroyBricks ball bricks, paddle, lastX paddle, hitBottom (w, h) ball lose)
                 x' -> loop (moveBall $ (hitWall (w, h) $ (hitPaddle (hitAllBricks ball bricks) paddle lastPaddleX)), destroyBricks ball bricks, movePaddle paddle x' size, lastX paddle, hitBottom (w, h) ball lose)
-             
-             
-             
-     loop (((w/2,h/2),(0.0,1)),(createBricks 10 100 50 0 0 "blue" 1 1) ++ (createBricks 5 100 50 100 100 "purple" 1 1) ++ (createBricks 3 100 50 200 200 "green" 1 1), ((w - size)/2,(w + size)/2,790,800.0),0.0, True)
+
+
+
+     loop (((w/2, h - 200),(1,2)),(createBricks 17 100 50 0 0 "blue" 1 1) ++ (createBricks 15 100 50 100 100 "purple" 1 1) ++ (createBricks 13 100 50 200 200 "green" 1 1), ((w - size)/2,(w + size)/2,h - 100 - 10,h - 100),0.0, False)

@@ -29,8 +29,8 @@ type Paddle = (Double, Double, Double, Double)
 showBall :: Ball -> Canvas ()
 showBall ((x,y),_) = do
         beginPath()
-        globalAlpha 0.5
-        fillStyle "red"
+        globalAlpha 1
+        fillStyle "black"
         arc(x, y, 5, 0, pi*2, False)
         closePath()
         fill()
@@ -128,11 +128,11 @@ hitBottom (width , height) theBall@((x,y), (hVel, vVel)) lose = do
            else False
       else True
 
-showLoseScreen :: (Double, Double) -> Ball -> Bool -> Canvas ()
-showLoseScreen (width, height) theBall@((x,y), (hVel, vVel)) lose =
+showLoseScreen :: (Double, Double, Double, Double) -> Ball -> Bool -> Canvas ()
+showLoseScreen (xd, yd, width, height) theBall@((x,y), (hVel, vVel)) lose =
     if ((y + vVel >= height) || lose)
      then do
-                clearRect (0,0,width,height)
+                clearRect (xd, yd, width, height)
                 lineWidth 1
                 strokeStyle "red"
                 font "30pt Calibri"
@@ -170,10 +170,20 @@ lastX (x,_,_,_) = x
 --     | otherwise = (signum hVel , vVel)
 --     where topSpeed = 1.4142135623731 :: Double
 
+
+showBorder :: (Double, Double, Double, Double) -> Canvas ()
+showBorder (xd, yd, w, h) = do
+    beginPath()
+    globalAlpha 1
+    fillStyle "green"
+    rect(xd,yd,w,h)
+    closePath()
+    fill()
+
 go :: DeviceContext -> IO ()
 go context = do
-
-     let (w,h) = (width context, height context) :: (Double, Double)
+     let (xd, yd) = (10, 10)
+     let (w,h) = ((width context) - xd, (height context) - yd) :: (Double, Double)
     -- uncomment to print the size of the canvas.
     --  print (w,h)
 
@@ -183,13 +193,14 @@ go context = do
 
              send context $ do
                 clearCanvas
+                showBorder(0, 0, w + xd,h + yd)
                 showBall ball
                 sequence_
                      [ showBrick brks
                      | brks <- bricks
                      ]
-                showLoseScreen (w,h) ball lose
 
+                showLoseScreen (xd, yd, w - xd, h - yd) ball lose
                 showPaddle paddle
              threadDelay (1 * 1000)
              es <- flush context

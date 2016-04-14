@@ -4,6 +4,8 @@ module Main where
 import Control.Concurrent
 import Data.Text (Text)
 import Graphics.Blank
+import qualified Graphics.Blank.Style as Style
+
 
 main :: IO ()
 main = blankCanvas 3000 { events = ["mousemove"] } $ go
@@ -134,10 +136,11 @@ showLoseScreen (xd, yd, width, height) theBall@((x,y), (hVel, vVel)) lose =
      then do
                 clearRect (xd, yd, width, height)
                 lineWidth 1
-                strokeStyle "red"
                 font "30pt Calibri"
-                fillText("You Lose!",10,50)
-                fillText("Refresh to play again!",10,150)
+		textAlign "center"
+	        fillStyle "red"
+                fillText("You Lose!", width/2, height/2)
+                fillText("Refresh to play again!", width/2, height/2 + 30)
      else do
             beginPath()
             globalAlpha 1
@@ -171,14 +174,27 @@ lastX (x,_,_,_) = x
 --     where topSpeed = 1.4142135623731 :: Double
 
 
-showBorder :: (Double, Double, Double, Double) -> Canvas ()
-showBorder (xd, yd, w, h) = do
+showRect :: (Double, Double, Double, Double, Text) -> Canvas ()
+showRect (xd, yd, w, h, color) = do
     beginPath()
     globalAlpha 1
-    fillStyle "green"
+    fillStyle color
     rect(xd,yd,w,h)
     closePath()
     fill()
+
+showBack :: (Double, Double, Double, Double) -> Canvas ()
+showBack (xd, yd, w, h) = do
+	beginPath()
+	globalAlpha 1
+        grd <- createRadialGradient (238, 50, 10, 238, 50, 300)
+        -- light blue
+        grd # addColorStop(0, "#8ED6FF")
+        -- dark blue
+        grd # addColorStop(1, "#004CB3")
+        Style.fillStyle grd;
+	rect(xd, yd, w, h)
+        fill();
 
 go :: DeviceContext -> IO ()
 go context = do
@@ -193,7 +209,8 @@ go context = do
 
              send context $ do
                 clearCanvas
-                showBorder(0, 0, w + xd,h + yd)
+                showRect(0, 0, w + xd,h + yd, "black")
+		showBack(xd, yd, w - xd, h - yd)
                 showBall ball
                 sequence_
                      [ showBrick brks
